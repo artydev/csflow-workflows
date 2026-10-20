@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=../csflow.schema.json
+name: Fetch Models (GET)
+description: Récupère la liste des modèles disponibles via l'API Albert en utilisant une requête HTTP GET, écrit le résultat dans un fichier JSON, puis affiche les données dans Excel.
+
+inputs:
+  # URL de l'endpoint officiel pour obtenir les modèles.
+  albert_models_url: 'https://albert.api.etalab.gouv.fr/v1/models'
+  # Chemin du fichier JSON de sortie.
+  json_output_path: 'tmp\models.json'
+  # Chemin du fichier Excel de sortie.
+  excel_output_path: 'tmp\albert_models.xlsx'
+
+steps:
+  - id: get_models
+    type: http_get
+    description: Appel GET à l'API Albert pour récupérer les modèles.
+    url: '{{albert_models_url}}'
+    headers:
+      Authorization: "Bearer {{env.ALBERT_API_KEY}}"
+    timeout: 30
+
+  - id: log_response
+    type: log
+    description: Affiche le statut et le corps de la réponse.
+    level: info
+    message: |
+      Réponse de l'API Albert (status {{get_models.status_code}}):
+      {{get_models.body}}
+
+  - id: write_json
+    type: file_write
+    description: Écrit la réponse JSON dans le fichier models.json.
+    path: '{{json_output_path}}'
+    content: '{{get_models.body}}'
+
+  - id: display_excel
+    type: agent
+    description: Affiche les données des modèles dans une feuille de calcul Excel.
+    auto_confirm: true
+    prompt: |
+      You are an automation agent with Excel tools available (excel_command, close_excel).
+      EXECUTE the following steps NOW using your tools. Do not describe, analyze, or confirm the plan — actually perform each action with your tools, then report the result.
+
+      1. Use excel_command to open Excel. If the file "{{excel_output_path}}" exists, open it; otherwise create a new workbook.
+      2. Add a new worksheet named "Modèles" (replace it if it already exists).
+      3. Parse the JSON response below ({{get_models.body}}) to extract each model's fields.
+      4. Create a table with the columns: "id", "type", "owned_by", "max_context_length", "aliases".
+      5. Populate the table with one row per model using the extracted data.
+      6. Save the workbook to the path "{{excel_output_path}}".
+
+      Use your excel_command tool for every step. When finished, close the Excel session with close_excel and reply with a short confirmation of what you did (file path, sheet name, number of rows written).
+
+  - id: finish
+    type: end
+    message: "Workflow terminé - la liste des modèles a été récupérée, écrite dans {{json_output_path}} et affichée dans {{excel_output_path}}."
