@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=../csflow.schema.json
+name: open-outlook
+description: Ouvre Microsoft Outlook et envoie la recette du couscous en HTML avec image.
+
+steps:
+
+  # ── 1. ouvrir Outlook ───────────────────────────────────────────────────────
+  - id: open_outlook
+    type: shell
+    description: Ouverture d'Outlook
+    cmd: start outlook
+    timeout: 30
+
+  # ── 2. écrire le corps HTML du message ──────────────────────────────────────
+  - id: write_body
+    type: file_write
+    description: Écriture du corps HTML du message
+    path: 'tmp/couscous_body.html'
+    content: |
+      <html>
+      <body style="font-family: Arial, sans-serif; color: #333; max-width: 700px; margin: 0 auto;">
+        <h1 style="color: #c0392b; text-align: center;">🍲 Recette du Couscous</h1>
+        <div style="text-align: center; margin: 20px 0;">
+          <img src="cid:couscous" alt="Couscous" style="max-width: 100%; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" />
+        </div>
+
+        <h2 style="color: #e67e22;">Ingrédients</h2>
+        <ul>
+          <li>500 g de semoule moyenne</li>
+          <li>1 kg de viande (agneau, mouton ou poulet) coupée en morceaux</li>
+          <li>2 oignons moyens, émincés</li>
+          <li>3 carottes, coupées en rondelles</li>
+          <li>2 courgettes, coupées en dés</li>
+          <li>2 navets, coupés en dés</li>
+          <li>200 g de pois chiches (trempés la veille)</li>
+          <li>2 cuillères à café de ras-el-hanout</li>
+          <li>1 cuillère à café de cumin moulu</li>
+          <li>1 cuillère à café de paprika doux</li>
+          <li>1/2 cuillère à café de cannelle</li>
+          <li>Sel et poivre du moulin</li>
+          <li>1,5 L d'eau ou de bouillon de volaille</li>
+        </ul>
+
+        <h2 style="color: #e67e22;">Préparation</h2>
+        <ol>
+          <li>Dans une grande marmite, faites revenir les oignons dans un peu d'huile jusqu'à ce qu'ils soient translucides.</li>
+          <li>Ajoutez la viande et faites dorer sur toutes les faces.</li>
+          <li>Incorporez les carottes, les navets, les courgettes et les pois chiches.</li>
+          <li>Saupoudrez les épices (ras-el-hanout, cumin, paprika, cannelle), salez et poivrez.</li>
+          <li>Versez l'eau ou le bouillon, portez à ébullition puis réduisez le feu. Couvrez et laissez mijoter 45 min à 1 h, jusqu'à ce que la viande soit tendre.</li>
+          <li>Pendant ce temps, humidifiez la semoule avec un peu d'eau, puis laissez-la gonfler 5 min.</li>
+          <li>Quand la viande est cuite, retirez la marmite du feu, ajoutez la semoule en pluie, mélangez délicatement et couvrez à nouveau pendant 5 min pour que la semoule absorbe le bouillon.</li>
+          <li>Servez chaud, décoré de coriandre fraîche ou de persil haché si désiré.</li>
+        </ol>
+
+        <p style="text-align: center; color: #888; margin-top: 30px;">Bon appétit ! 🥘</p>
+      </body>
+      </html>
+
+  # ── 3. envoyer l'e-mail HTML avec image intégrée ────────────────────────────
+  - id: send_couscous
+    type: shell
+    description: Envoi de la recette du couscous en HTML avec image
+    cmd: |
+      powershell -Command "$body = Get-Content -Raw -Encoding UTF8 'tmp/couscous_body.html'; $outlook = New-Object -ComObject Outlook.Application; $mail = $outlook.CreateItem(0); $mail.To = 'salvatore.didio@gmail.com'; $mail.Subject = 'Recette du couscous'; $mail.HTMLBody = $body; $att = $mail.Attachments.Add('tmp/couscous.jpg'); $att.PropertyAccessor.SetProperty('http://schemas.microsoft.com/mapi/proptag/0x3712001E', 'couscous'); $mail.Send()"
+    timeout: 60
+
+  # ── 4. confirmation ─────────────────────────────────────────────────────────
+  - id: done
+    type: log
+    description: Confirmation
+    level: success
+    message: |
+      Outlook a été lancé et la recette du couscous en HTML avec image a été envoyée à salvatore.didio@gmail.com. (code retour : {{open_outlook.returncode}})
