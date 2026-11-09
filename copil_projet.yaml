@@ -16,7 +16,7 @@ description: "Du plan de projet brut au rapport COPIL validé : indicateurs calc
 #    • Une branche conditionnelle           → note d'escalade uniquement si le statut est ROUGE ;
 #    • Une décision humaine                 → rien n'est diffusé sans validation du chef de projet.
 #
-#  Prérequis : CSAgent lancé depuis workflow\ (start_agent.bat).
+#  Prérequis : CSAgent lancé depuis ce dossier (start_agent.sh / start_agent.bat).
 #  Les écritures de CSAgent sont limitées à son dossier courant ; l'étape « validation »
 #  est le vrai garde-fou, d'où auto_confirm: true sur les étapes agent.
 #  Pour rejouer à une autre date : modifier date_reference ci-dessous.
@@ -31,7 +31,7 @@ steps:
   - id: plan_projet
     type: file_write
     description: "Plan de projet (10 tâches)"
-    path: 'tmp\copil\taches.csv'
+    path: 'tmp/copil/taches.csv'
     content: |
       id,tache,responsable,statut,avancement,charge_prevue_j,charge_consommee_j,echeance
       T01,Cadrage et périmètre,Claire Martin,Terminé,100,10,9,2026-08-28
@@ -48,7 +48,7 @@ steps:
   - id: notes_reunion
     type: file_write
     description: "Notes de la réunion hebdo"
-    path: 'tmp\copil\notes_reunion.md'
+    path: 'tmp/copil/notes_reunion.md'
     content: |
       # Réunion hebdomadaire — jeudi 15/10/2026
 
@@ -72,7 +72,7 @@ steps:
   - id: outil_indicateurs
     type: file_write
     description: "Calculateur d'indicateurs"
-    path: 'tmp\copil\kpi.py'
+    path: 'tmp/copil/kpi.py'
     content: |
       # kpi.py — indicateurs de pilotage d'un projet (calcul déterministe, sans IA)
       # Usage : python kpi.py <plan.csv> <date AAAA-MM-JJ> [--statut]
@@ -133,7 +133,8 @@ steps:
 
           statut = statut_global(cpi, len(retards), len(bloquees))
           if seul_statut:
-              print(statut)
+              # pas de \n final : évite de polluer {{statut.output}} dans skip_if
+              print(statut, end='')
               return
 
           derive_j = eac - bac
@@ -180,14 +181,14 @@ steps:
   - id: indicateurs
     type: python
     description: "Indicateurs de pilotage"
-    script: 'tmp\copil\kpi.py'
-    args: ['tmp\copil\taches.csv', '{{date_reference}}']
+    script: 'tmp/copil/kpi.py'
+    args: ['tmp/copil/taches.csv', '{{date_reference}}']
 
   - id: statut
     type: python
     description: "Statut global (RAG)"
-    script: 'tmp\copil\kpi.py'
-    args: ['tmp\copil\taches.csv', '{{date_reference}}', '--statut']
+    script: 'tmp/copil/kpi.py'
+    args: ['tmp/copil/taches.csv', '{{date_reference}}', '--statut']
 
   # ── 3. Lecture et rédaction : CSAgent ────────────────────────────────────────
   - id: risques
@@ -195,7 +196,7 @@ steps:
     description: "Analyse des risques"
     auto_confirm: true
     prompt: |
-      (N'exécute aucune commande : Python n'est pas installé sur ce poste. Utilise seulement read_file / write_file.)
+      (Utilise seulement read_file / write_file, pas de shell.)
       Tu es analyste de risques projet. Réponds toujours en français.
       Lis ces fichiers (chemins relatifs, dossier courant) :
       - tmp/copil/taches.csv : le plan de projet
@@ -214,7 +215,7 @@ steps:
     description: "Actions et décisions"
     auto_confirm: true
     prompt: |
-      (N'exécute aucune commande : Python n'est pas installé sur ce poste. Utilise seulement read_file / write_file.)
+      (Utilise seulement read_file / write_file, pas de shell.)
       Réponds toujours en français. Lis tmp/copil/notes_reunion.md (chemin relatif).
       Écris dans tmp/copil/actions.md :
       1. "## Décisions" : les décisions prises, une ligne chacune, avec leur statut (actée / à confirmer) ;
@@ -231,7 +232,7 @@ steps:
     description: "Rapport de synthèse COPIL"
     auto_confirm: true
     prompt: |
-      (N'exécute aucune commande : Python n'est pas installé sur ce poste. Utilise seulement read_file / write_file.)
+      (Utilise seulement read_file / write_file, pas de shell.)
       Tu rédiges, en français professionnel et concis, le rapport d'avancement destiné au COPIL
       du 22/10/2026 (lecteurs : sponsor, DGS, directeurs).
       Sources à lire : tmp/copil/indicateurs.md (chiffres de référence, à citer tels quels),
@@ -249,6 +250,66 @@ steps:
 
       Chaque chiffre doit provenir des fichiers : n'invente rien. Ton factuel, sans jargon technique.
 
+  # ── 3bis. Rapport final en HTML, affiché dans le navigateur ──────────────────
+  - id: html_rapport
+    type: python
+    description: "Conversion du rapport en page HTML"
+    code: |
+      import os
+      src = 'tmp/copil/rapport_copil.md'
+      dst = 'tmp/rapport.html'
+      if os.path.exists(src):
+          with open(src, encoding='utf-8') as f:
+              md = f.read()
+      else:
+          md = '# Rapport COPIL\n\nLe rapport n\'a pas pu être généré.'
+      lignes = md.splitlines()
+      html = []
+      en_liste = False
+      def fermer_liste():
+          global en_liste
+          if en_liste:
+              html.append('</ul>')
+              en_liste = False
+      for ligne in lignes:
+          ligne = ligne.rstrip()
+          if not ligne.strip():
+              fermer_liste()
+              continue
+          if ligne.startswith('### '):
+              fermer_liste(); html.append(f'<h3>{ligne[4:]}</h3>')
+          elif ligne.startswith('## '):
+              fermer_liste(); html.append(f'<h2>{ligne[3:]}</h2>')
+          elif ligne.startswith('# '):
+              fermer_liste(); html.append(f'<h1>{ligne[2:]}</h1>')
+          elif ligne.startswith('- '):
+              if not en_liste:
+                  html.append('<ul>')
+                  en_liste = True
+              html.append(f'<li>{ligne[2:]}</li>')
+          else:
+              fermer_liste(); html.append(f'<p>{ligne}</p>')
+      fermer_liste()
+      corps = '\n'.join(html)
+      page = (f'<!DOCTYPE html>\n<html lang="fr">\n<head>\n'
+              f'<meta charset="utf-8">\n<title>Rapport COPIL</title>\n'
+              f'<style>body{{font-family:Arial,sans-serif;margin:2em auto;max-width:800px;'
+              f'line-height:1.5;}}h1{{color:#1a3a5c;border-bottom:2px solid #1a3a5c;'
+              f'padding-bottom:.3em;}}h2{{color:#2a5a8c;margin-top:1.5em;}}</style>\n'
+              f'</head>\n<body>\n{corps}\n</body>\n</html>\n')
+      with open(dst, 'w', encoding='utf-8') as f:
+          f.write(page)
+      print(dst)
+
+  - id: affiche_rapport
+    type: python
+    description: "Affichage du rapport HTML dans le navigateur par défaut"
+    code: |
+      import webbrowser, pathlib
+      path = pathlib.Path('tmp/rapport.html').resolve()
+      webbrowser.open(path.as_uri())
+      print(f"Rapport ouvert : {path}")
+
   # ── 4. Branche conditionnelle : seulement si le projet est au rouge ──────────
   - id: escalade
     type: agent
@@ -256,7 +317,7 @@ steps:
     skip_if: "'{{statut.output}}' != 'ROUGE'"
     auto_confirm: true
     prompt: |
-      (N'exécute aucune commande : Python n'est pas installé sur ce poste. Utilise seulement read_file / write_file.)
+      (Utilise seulement read_file / write_file, pas de shell.)
       Réponds en français. Le projet est au statut {{statut.output}}.
       Lis tmp/copil/indicateurs.md, tmp/copil/risques.md et tmp/copil/notes_reunion.md.
       Rédige dans tmp/copil/note_escalade.md une note courte (10 lignes maximum) de la cheffe de projet
@@ -270,14 +331,17 @@ steps:
   - id: validation
     type: human_approval
     description: "Validation de la cheffe de projet"
-    message: "Statut global : {{statut.output}}. Le rapport COPIL est prêt (tmp\\copil\\rapport_copil.md). Valider sa diffusion ?"
+    message: "Statut global : {{statut.output}}. Le rapport COPIL est prêt (tmp/copil/rapport_copil.md). Valider sa diffusion ?"
     on_approve: relecture
     on_reject: annule
 
   - id: relecture
-    type: file_read
-    description: "Relecture du rapport"
-    path: 'tmp\copil\rapport_copil.md'
+    type: python
+    description: "Lecture du rapport pour le log"
+    code: |
+      import pathlib
+      p = pathlib.Path('tmp/copil/rapport_copil.md')
+      print(p.read_text(encoding='utf-8') if p.exists() else 'Rapport non disponible')
 
   - id: diffusion
     type: log
@@ -288,7 +352,7 @@ steps:
 
       {{relecture.output}}
 
-      Livrables : tmp\copil\rapport_copil.md · risques.md · actions.md · indicateurs.md (+ note_escalade.md si statut rouge)
+      Livrables : tmp/copil/rapport_copil.md · risques.md · actions.md · indicateurs.md (+ note_escalade.md si statut rouge)
 
   - id: fin
     type: end
@@ -298,4 +362,4 @@ steps:
   - id: annule
     type: end
     description: "Diffusion annulée"
-    message: "Diffusion refusée par la cheffe de projet. Les livrables restent disponibles dans tmp\\copil pour correction."
+    message: "Diffusion refusée par la cheffe de projet. Les livrables restent disponibles dans tmp/copil pour correction."
