@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>csflow-workflows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..60,700&family=Hanken+Grotesk:wght@400;500;600&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+/* ── Design tokens — Dark Steel / Cyan ──────────────────────────────────── */
+:root {
+  --bg:         #090d12;
+  --surface:    #0f1620;
+  --ink:        #c8d8e8;
+  --mute:       #546a80;
+  --line:       #1a2535;
+  --accent:     #06cfc4;
+  --accent-ink: #021a19;
+  --human:      #f4a24a;
+  --mcp:        #4f8ef7;
+  --bad:        #f87171;
+  --ok:         #34d9a0;
+  --shadow:     0 1px 3px rgba(0,0,0,.5), 0 8px 28px -10px rgba(6,207,196,.12);
+  --glow:       0 0 0 1px rgba(6,207,196,.18), 0 4px 20px rgba(6,207,196,.08);
+}
+
+/* ── Reset / base ───────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+}
+h1,h2,h3 {
+  font-family: "Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  margin: 0; letter-spacing: -.01em;
+}
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.page { max-width: 1180px; margin: 0 auto; padding: 0 16px 64px; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  display: flex; flex-wrap: wrap; gap: 12px 24px;
+  align-items: center; justify-content: space-between;
+  padding: 28px 0 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+}
+header h1 {
+  font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 10px;
+  color: var(--accent); letter-spacing: -.02em;
+  text-shadow: 0 0 32px rgba(6,207,196,.35);
+}
+header h1 span { font-size: 14px; font-weight: 400; color: var(--mute); font-family: "IBM Plex Mono", monospace; }
+.header-right { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* ── Status chip ─────────────────────────────────────────────────────────── */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); font-size: 13px; color: var(--mute);
+  cursor: pointer; font: inherit;
+}
+.status-chip:hover { border-color: var(--accent); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); flex: 0 0 8px; }
+.status-dot.on { background: var(--ok); }
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 20px; align-items: center;
+}
+.toolbar input {
+  flex: 1 1 240px; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink); font: inherit;
+  transition: border-color .15s;
+}
+.toolbar input:focus { border-color: var(--accent); outline: none; }
+.btn-secondary {
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: transparent; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.btn-secondary[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+}
+.btn-secondary:disabled { opacity: .45; cursor: not-allowed; }
+.btn-primary {
+  padding: 8px 16px; border-radius: 9px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+.btn-primary.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-primary.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+.btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Grid ────────────────────────────────────────────────────────────────── */
+.workflow-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;
+}
+.workflow-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: var(--shadow); cursor: pointer; text-align: left; width: 100%;
+  font: inherit; transition: border-color .15s, box-shadow .15s;
+}
+.workflow-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+.workflow-card h3 { font-size: 17px; }
+.workflow-card .desc {
+  margin: 0; color: var(--mute); font-size: 14px;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; min-height: 63px;
+}
+
+/* ── Step timeline ───────────────────────────────────────────────────────── */
+.step-timeline { display: flex; align-items: center; height: 14px; }
+.step-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--line); flex: 0 0 auto;
+}
+.step-dot.agent {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(6,207,196,.6);
+}
+.step-dot.human_approval, .step-dot.user_input {
+  background: var(--human); border-radius: 3px; transform: rotate(45deg);
+  box-shadow: 0 0 6px rgba(244,162,74,.5);
+}
+.step-dot.mcp_call, .step-dot.mcp_tools {
+  background: var(--mcp);
+  box-shadow: 0 0 6px rgba(79,142,247,.5);
+}
+.step-dot.python, .step-dot.shell { background: var(--mute); }
+.step-connector { height: 2px; background: var(--line); flex: 1 1 4px; min-width: 3px; }
+
+/* ── Tags ────────────────────────────────────────────────────────────────── */
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-size: 12px; padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--line); color: var(--mute);
+}
+.tag.tag-human { color: var(--human); border-color: var(--human); }
+.tag.tag-mcp   { color: var(--mcp);   border-color: var(--mcp); }
+.tag.tag-agent { color: var(--accent); border-color: var(--accent); }
+
+/* ── Card footer ─────────────────────────────────────────────────────────── */
+.card-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; margin-top: auto; color: var(--mute); font-size: 13px;
+}
+.card-footer code {
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--mute);
+}
+.btn-dl {
+  flex-shrink: 0; padding: 4px 10px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--bg);
+  color: var(--mute); font-size: 12px; cursor: pointer; font: inherit; font-size: 12px;
+}
+.btn-dl:hover { border-color: var(--accent); color: var(--accent); background: var(--surface); }
+
+/* ── Empty / loading ─────────────────────────────────────────────────────── */
+.empty-state {
+  padding: 40px; text-align: center; color: var(--mute);
+  border: 1px dashed var(--line); border-radius: 12px;
+  grid-column: 1/-1;
+}
+.spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+  vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Side panel dialog ───────────────────────────────────────────────────── */
+dialog {
+  border: none; padding: 0; background: transparent;
+  max-width: none; max-height: none; margin: 0 0 0 auto; height: 100%;
+}
+dialog::backdrop { background: rgba(10,20,17,.45); }
+body:has(dialog[open]) { overflow: hidden; }
+
+.workflow-panel {
+  background: var(--surface); color: var(--ink);
+  width: min(clamp(520px,44vw,860px),100vw);
+  height: 100%; overflow-y: auto; overflow-x: hidden;
+  padding: 24px; display: flex; flex-direction: column; gap: 16px;
+  border-left: 1px solid var(--line);
+}
+.workflow-panel h2 { font-size: 22px; }
+.panel-meta { font-size: 13px; color: var(--mute); font-family: "IBM Plex Mono", monospace; }
+label { display: block; font-size: 13px; color: var(--mute); margin-bottom: 4px; }
+.yaml-textarea {
+  width: 100%; min-height: 320px; height: 50vh; resize: vertical;
+  padding: 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink);
+  font: 13px/20px "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  white-space: pre; overflow: auto; tab-size: 2;
+}
+.text-input {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--ink); font: inherit;
+}
+.button-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.status-line { font-size: 13px; min-height: 20px; }
+.status-line.ok  { color: var(--ok); }
+.status-line.err { color: var(--bad); }
+.status-line.saving { color: var(--mute); }
+.unsaved { color: var(--human); font-size: 13px; }
+
+/* ── PAT modal ───────────────────────────────────────────────────────────── */
+dialog.modal { margin: auto; height: auto; width: min(480px,94vw); }
+.modal-panel {
+  background: var(--surface); color: var(--ink);
+  padding: 24px; border-radius: 14px; border: 1px solid var(--line);
+  display: grid; gap: 14px;
+}
+.modal-panel h2 { font-size: 20px; }
+.modal-panel p { margin: 0; color: var(--mute); font-size: 14px; line-height: 1.6; }
+.modal-panel code {
+  font-family: "IBM Plex Mono", monospace; font-size: 12px;
+  background: var(--bg); padding: 1px 5px; border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+  .workflow-panel { width: 100vw; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <header>
+    <div>
+      <h1>csflow-workflows <span>artydev/csflow-workflows</span></h1>
+    </div>
+    <div class="header-right">
+      <button class="status-chip" id="btn-pat" title="Configurer le PAT GitHub">
+        <span class="status-dot" id="dot-pat"></span>
+        <span id="label-pat">PAT non configuré</span>
+      </button>
+      <button class="btn-secondary" id="btn-refresh" title="Recharger">↻ Actualiser</button>
+    </div>
+  </header>
+
+  <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Rechercher un workflow…" autocomplete="off">
+    <button class="btn-secondary" data-filter="all"    aria-pressed="true">Tous</button>
+    <button class="btn-secondary" data-filter="agent"  aria-pressed="false">Agent IA</button>
+    <button class="btn-secondary" data-filter="human"  aria-pressed="false">Validation</button>
+    <button class="btn-secondary" data-filter="mcp"    aria-pressed="false">MCP</button>
+  </div>
+
+  <!-- ── Grid ─────────────────────────────────────────────────────────────── -->
+  <div class="workflow-grid" id="grid">
+    <div class="empty-state"><span class="spinner"></span>Chargement des workflows…</div>
+  </div>
+
+</div>
+
+<!-- ── Side panel ─────────────────────────────────────────────────────────── -->
+<dialog id="panel">
+  <div class="workflow-panel" role="document">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <h2 id="panel-title">—</h2>
+        <div class="panel-meta" id="panel-path"></div>
+      </div>
+      <button class="btn-secondary" id="btn-close" style="flex-shrink:0">✕ Fermer</button>
+    </div>
+
+    <div>
+      <label for="panel-commit">Message de commit</label>
+      <input class="text-input" type="text" id="panel-commit" placeholder="Update workflow via web UI">
+    </div>
+
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <label for="panel-yaml" style="margin:0">YAML</label>
+        <span class="unsaved" id="panel-unsaved" hidden>● non enregistré</span>
+      </div>
+      <textarea class="yaml-textarea" id="panel-yaml" spellcheck="false"></textarea>
+    </div>
+
+    <div class="button-row">
+      <button class="btn-primary" id="btn-save">Enregistrer</button>
+      <button class="btn-primary ghost" id="btn-dl-panel">⬇ Télécharger</button>
+      <button class="btn-primary ghost" id="btn-cancel">Annuler</button>
+    </div>
+    <div class="status-line" id="panel-status"></div>
+  </div>
+</dialog>
+
+<!-- ── PAT modal ──────────────────────────────────────────────────────────── -->
+<dialog class="modal" id="modal-pat">
+  <div class="modal-panel">
+    <h2>🔑 Personal Access Token GitHub</h2>
+    <p>
+      Nécessaire pour <strong>enregistrer</strong> les modifications.<br>
+      Créez un <em>fine-grained token</em> avec la permission
+      <code>Contents: Read and write</code> sur le repo
+      <code>artydev/csflow-workflows</code>.<br>
+      Le token est stocké uniquement dans <code>localStorage</code> de ce navigateur.
+    </p>
+    <div>
+      <label for="input-pat">Token GitHub</label>
+      <input class="text-input" type="password" id="input-pat" placeholder="github_pat_…" autocomplete="off">
+    </div>
+    <div class="button-row">
+      <button class="btn-primary" id="btn-pat-save">Enregistrer</button>
+      <button class="btn-primary ghost" id="btn-pat-clear">Effacer</button>
+      <button class="btn-primary ghost" id="btn-pat-cancel" style="margin-left:auto">Annuler</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Configuration
+══════════════════════════════════════════════════════════════════════════ */
+const OWNER = 'artydev';
+const REPO  = 'csflow-workflows';
+const BASE  = `https://api.github.com/repos/${OWNER}/${REPO}/contents/`;
+const PAT_KEY = 'csflow_github_pat';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   State
+══════════════════════════════════════════════════════════════════════════ */
+let allFiles  = [];   // { name, path, sha, size } — from listing
+let openFile  = null; // { path, sha, content (decoded yaml) }
+let activeFilter = 'all';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PAT helpers
+══════════════════════════════════════════════════════════════════════════ */
+const getPat = () => localStorage.getItem(PAT_KEY) || '';
+
+function updatePatChip() {
+  const pat = getPat();
+  document.getElementById('dot-pat').className  = 'status-dot' + (pat ? ' on' : '');
+  document.getElementById('label-pat').textContent = pat ? 'PAT configuré' : 'PAT non configuré';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GitHub API
+══════════════════════════════════════════════════════════════════════════ */
+function ghHeaders() {
+  const h = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const pat = getPat();
+  if (pat) h.Authorization = `Bearer ${pat}`;
+  return h;
+}
+
+// Raw content — served from GitHub CDN, no rate limit
+const RAW_BASE = `https://raw.githubusercontent.com/${OWNER}/${REPO}/main/`;
+
+async function fetchStatic() {
+  // Try relative workflows.json first (GitHub Pages / local)
+  try {
+    const res = await fetch('./workflows.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const data = await res.json();
+      return { source: 'static', data };
+    }
+  } catch (_) {}
+  // Fallback: GitHub API listing
+  const res = await fetch(BASE, { headers: ghHeaders() });
+  if (!res.ok) throw new Error(`GitHub ${res.status}: ${res.statusText}`);
+  const items = await res.json();
+  return { source: 'api', data: items.filter(f => f.type === 'file' && (f.name.endsWith('.yaml') || !f.name.includes('.'))) };
+}
+
+async function fetchRawYaml(path) {
+  // Use raw CDN — no auth, no rate limit
+  const res = await fetch(RAW_BASE + path, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`raw.githubusercontent.com ${res.status}`);
+  return res.text();
+}
+
+async function getFile(path) {
+  // Only called when saving (need SHA)
+  const res = await fetch(BASE + path, { headers: ghHeaders() });
+  if (!res.ok) throw new Error(`GitHub ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+async function putFile(path, yamlContent, sha, message) {
+  const pat = getPat();
+  if (!pat) throw new Error('PAT manquant — configurez votre token GitHub.');
+  const encoded = btoa(unescape(encodeURIComponent(yamlContent)));
+  const res = await fetch(BASE + path, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: encoded, sha }),
+  });
+  if (res.status === 409) {
+    // Conflict: file was updated elsewhere — re-fetch SHA and retry once
+    const fresh = await getFile(path);
+    const res2 = await fetch(BASE + path, {
+      method: 'PUT',
+      headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, content: encoded, sha: fresh.sha }),
+    });
+    if (!res2.ok) {
+      const err = await res2.json().catch(() => ({}));
+      throw new Error(err.message || `GitHub ${res2.status}`);
+    }
+    return res2.json();
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `GitHub ${res.status}`);
+  }
+  return res.json();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   YAML mini-parser  (name, description, step types)
+══════════════════════════════════════════════════════════════════════════ */
+function parseWorkflowMeta(yaml) {
+  const unquote = s => s?.trim().replace(/^['"]|['"]$/g, '') ?? '';
+  const name = unquote(yaml.match(/^name\s*:\s*(.+)/m)?.[1]) || '(sans nom)';
+
+  // Handle inline value AND block scalars (>-, >, |-, |)
+  let desc = '';
+  const descMatch = yaml.match(/^description\s*:\s*(.*)$/m);
+  if (descMatch) {
+    const val = descMatch[1].trim();
+    if (val === '>-' || val === '>' || val === '|-' || val === '|' || val === '') {
+      // Block scalar — collect indented lines that follow
+      const start = yaml.indexOf(descMatch[0]) + descMatch[0].length;
+      const parts = [];
+      for (const line of yaml.slice(start).split('\n')) {
+        if (/^\s+\S/.test(line)) parts.push(line.trim());
+        else if (line.trim() === '') continue;
+        else break;
+      }
+      desc = parts.join(' ');
+    } else {
+      desc = unquote(val);
+    }
+  }
+
+  const types = [...yaml.matchAll(/^\s+type\s*:\s*(\w+)/gm)].map(m => m[1]);
+  return { name, desc, types };
+}
+
+function b64decode(b64) {
+  return decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Render helpers
+══════════════════════════════════════════════════════════════════════════ */
+const TYPE_ICONS = { agent:'◆', human_approval:'◈', user_input:'◈', mcp_tools:'⬡', mcp_call:'⬡', python:'●', shell:'●' };
+
+function renderTimeline(types) {
+  if (!types.length) return '';
+  const dots = types.slice(0, 14).map((t, i) => {
+    const cls  = ['agent','human_approval','user_input','mcp_tools','mcp_call','python','shell'].includes(t) ? t : '';
+    const conn = i < types.length - 1 ? '<span class="step-connector"></span>' : '';
+    return `<span class="step-dot ${cls}" title="${t}"></span>${conn}`;
+  }).join('');
+  return `<div class="step-timeline">${dots}</div>`;
+}
+
+function renderTags(types) {
+  const set = new Set(types);
+  const tags = [];
+  if (set.has('agent'))                              tags.push('<span class="tag tag-agent">agent IA</span>');
+  if (set.has('human_approval') || set.has('user_input')) tags.push('<span class="tag tag-human">validation</span>');
+  if (set.has('mcp_tools') || set.has('mcp_call'))   tags.push('<span class="tag tag-mcp">MCP</span>');
+  return tags.length ? `<div class="tag-list">${tags.join('')}</div>` : '';
+}
+
+function matchesFilter(types) {
+  if (activeFilter === 'all') return true;
+  if (activeFilter === 'agent') return types.includes('agent');
+  if (activeFilter === 'human') return types.some(t => t === 'human_approval' || t === 'user_input');
+  if (activeFilter === 'mcp')   return types.some(t => t === 'mcp_tools' || t === 'mcp_call');
+  return true;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Load & render grid
+══════════════════════════════════════════════════════════════════════════ */
+async function loadWorkflows() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '<div class="empty-state"><span class="spinner"></span>Chargement…</div>';
+  try {
+    const { source, data } = await fetchStatic();
+
+    if (source === 'static') {
+      // workflows.json already has parsed metadata
+      allFiles = data.map(f => ({ ...f, yaml: null, sha: null }));
+    } else {
+      // API fallback: minimal metadata from filename only
+      allFiles = data.map(f => ({
+        path: f.path || f.name,
+        name: (f.path || f.name).replace(/\.ya?ml$/, ''),
+        desc: '', types: [], yaml: null, sha: f.sha || null,
+      }));
+    }
+    renderGrid();
+  } catch (e) {
+    grid.innerHTML = `<div class="empty-state" style="color:var(--bad)">Erreur : ${e.message}</div>`;
+  }
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const q    = document.getElementById('search').value.toLowerCase();
+  const filtered = allFiles.filter(f =>
+    matchesFilter(f.types) &&
+    (!q || f.name.toLowerCase().includes(q) || f.desc.toLowerCase().includes(q))
+  );
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state">Aucun workflow ne correspond.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(f => `
+    <div class="workflow-card" role="button" tabindex="0" data-path="${f.path}" title="Ouvrir ${f.path}">
+      <h3>${esc(f.name)}</h3>
+      <p class="desc">${esc(f.desc) || '<em style="color:var(--mute)">Pas de description.</em>'}</p>
+      ${renderTimeline(f.types)}
+      ${renderTags(f.types)}
+      <div class="card-footer">
+        <code>${esc(f.path)}</code>
+        <button class="btn-dl" title="Télécharger ${esc(f.path)}" data-dl="${f.path}">⬇ Télécharger</button>
+      </div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.workflow-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.btn-dl')) return;
+      openPanel(card.dataset.path);
+    });
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPanel(card.dataset.path); }
+    });
+  });
+  grid.querySelectorAll('.btn-dl').forEach(btn =>
+    btn.addEventListener('click', e => { e.stopPropagation(); downloadWorkflow(btn.dataset.dl); })
+  );
+}
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Side panel
+══════════════════════════════════════════════════════════════════════════ */
+async function openPanel(path) {
+  const panel  = document.getElementById('panel');
+  const title  = document.getElementById('panel-title');
+  const meta   = document.getElementById('panel-path');
+  const yamlEl = document.getElementById('panel-yaml');
+  const status = document.getElementById('panel-status');
+  const unsaved= document.getElementById('panel-unsaved');
+  const commit = document.getElementById('panel-commit');
+
+  const cached = allFiles.find(f => f.path === path);
+  title.textContent   = cached?.name || '…';
+  meta.textContent    = path;
+  yamlEl.value        = '';
+  status.textContent  = '';
+  status.className    = 'status-line';
+  unsaved.hidden      = true;
+  commit.value        = `Update ${path}`;
+  panel.showModal();
+
+  try {
+    // Use cached YAML if already fetched, else load from raw CDN (no rate limit)
+    let yaml = cached?.yaml || null;
+    if (!yaml) {
+      yaml = await fetchRawYaml(path);
+      if (cached) cached.yaml = yaml;
+    }
+    const { name } = parseWorkflowMeta(yaml);
+    openFile = { path, sha: null, originalYaml: yaml }; // sha fetched lazily on save
+    title.textContent = name || cached?.name || path;
+    yamlEl.value = yaml;
+  } catch (e) {
+    status.textContent = e.message;
+    status.className   = 'status-line err';
+  }
+}
+
+function closePanel() {
+  document.getElementById('panel').close();
+  openFile = null;
+  document.getElementById('panel-unsaved').hidden = true;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Save
+══════════════════════════════════════════════════════════════════════════ */
+async function savePanel() {
+  if (!openFile) return;
+  const yamlEl  = document.getElementById('panel-yaml');
+  const status  = document.getElementById('panel-status');
+  const commit  = document.getElementById('panel-commit');
+  const saveBtn = document.getElementById('btn-save');
+
+  const newYaml = yamlEl.value;
+  const message = commit.value.trim() || `Update ${openFile.path}`;
+
+  status.textContent = 'Enregistrement…';
+  status.className   = 'status-line saving';
+  saveBtn.disabled   = true;
+
+  try {
+    // Fetch current SHA just before saving (always fresh)
+    const fileInfo = await getFile(openFile.path);
+    const sha = fileInfo.sha;
+    const result = await putFile(openFile.path, newYaml, sha, message);
+    openFile.sha         = result.content.sha;
+    openFile.originalYaml = newYaml;
+    document.getElementById('panel-unsaved').hidden = true;
+    status.textContent = `✓ Enregistré — commit ${result.commit.sha.slice(0,7)}`;
+    status.className   = 'status-line ok';
+
+    // Refresh the card in the grid
+    const idx = allFiles.findIndex(f => f.path === openFile.path);
+    if (idx !== -1) {
+      const meta = parseWorkflowMeta(newYaml);
+      allFiles[idx] = { ...allFiles[idx], ...meta, sha: openFile.sha };
+      renderGrid();
+    }
+  } catch (e) {
+    status.textContent = `✗ ${e.message}`;
+    status.className   = 'status-line err';
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PAT modal
+══════════════════════════════════════════════════════════════════════════ */
+function openPatModal() {
+  document.getElementById('input-pat').value = getPat();
+  document.getElementById('modal-pat').showModal();
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Download
+══════════════════════════════════════════════════════════════════════════ */
+function downloadWorkflow(path) {
+  const f = allFiles.find(x => x.path === path);
+  if (!f || !f.yaml) return;
+  const filename = f.path.includes('.') ? f.path.split('/').pop() : f.path.split('/').pop() + '.yaml';
+  const blob = new Blob([f.yaml], { type: 'text/yaml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Event wiring
+══════════════════════════════════════════════════════════════════════════ */
+
+// PAT chip
+document.getElementById('btn-pat').addEventListener('click', openPatModal);
+
+// PAT modal
+document.getElementById('btn-pat-save').addEventListener('click', () => {
+  const val = document.getElementById('input-pat').value.trim();
+  if (val) localStorage.setItem(PAT_KEY, val);
+  else localStorage.removeItem(PAT_KEY);
+  updatePatChip();
+  document.getElementById('modal-pat').close();
+});
+document.getElementById('btn-pat-clear').addEventListener('click', () => {
+  localStorage.removeItem(PAT_KEY);
+  document.getElementById('input-pat').value = '';
+  updatePatChip();
+});
+document.getElementById('btn-pat-cancel').addEventListener('click', () =>
+  document.getElementById('modal-pat').close()
+);
+
+// Close panel
+document.getElementById('btn-close').addEventListener('click', closePanel);
+document.getElementById('btn-cancel').addEventListener('click', closePanel);
+
+// Close on backdrop click
+document.getElementById('panel').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePanel();
+});
+
+// Download from panel (uses live textarea content)
+document.getElementById('btn-dl-panel').addEventListener('click', () => {
+  if (!openFile) return;
+  const yaml     = document.getElementById('panel-yaml').value;
+  const filename = openFile.path.includes('.') ? openFile.path.split('/').pop() : openFile.path.split('/').pop() + '.yaml';
+  const blob = new Blob([yaml], { type: 'text/yaml' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+});
+
+// Save
+document.getElementById('btn-save').addEventListener('click', savePanel);
+
+// Unsaved indicator
+document.getElementById('panel-yaml').addEventListener('input', () => {
+  if (!openFile) return;
+  const changed = document.getElementById('panel-yaml').value !== openFile.originalYaml;
+  document.getElementById('panel-unsaved').hidden = !changed;
+});
+
+// Ctrl+S in panel
+document.getElementById('panel-yaml').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); savePanel(); }
+});
+
+// Search
+document.getElementById('search').addEventListener('input', renderGrid);
+
+// Filters
+document.querySelectorAll('[data-filter]').forEach(btn =>
+  btn.addEventListener('click', () => {
+    activeFilter = btn.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(b =>
+      b.setAttribute('aria-pressed', b === btn ? 'true' : 'false')
+    );
+    renderGrid();
+  })
+);
+
+// Refresh
+document.getElementById('btn-refresh').addEventListener('click', loadWorkflows);
+
+// Close PAT modal on backdrop
+document.getElementById('modal-pat').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.target.close();
+});
+
+// Keyboard: Escape closes
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('panel').open) closePanel();
+    if (document.getElementById('modal-pat').open) document.getElementById('modal-pat').close();
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Boot
+══════════════════════════════════════════════════════════════════════════ */
+updatePatChip();
+loadWorkflows();
+</script>
+</body>
+</html>

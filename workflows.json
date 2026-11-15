@@ -1,0 +1,165 @@
+[
+  {
+    "path": "albert_models.yaml",
+    "name": "albert-models",
+    "desc": "Récupère la liste des modèles de l'API Albert (DINUM) via CSAgent, génère une page HTML \"award-winning\" et l'ouvre dans Edge via le protocole file:// (Windows).",
+    "types": [
+      "agent",
+      "file_read",
+      "file_write",
+      "python",
+      "shell",
+      "log"
+    ]
+  },
+  {
+    "path": "albert_models_status.yaml",
+    "name": "albert-models-status",
+    "desc": "Récupère les modèles de l'API Albert (DINUM) et leur statut via CSAgent, génère une page HTML \"award-winning\" en thème clair et l'ouvre dans Edge via le protocole file:// (Windows).",
+    "types": [
+      "agent",
+      "file_read",
+      "file_write",
+      "python",
+      "shell",
+      "log"
+    ]
+  },
+  {
+    "path": "copil_projet.yaml",
+    "name": "Préparation du COPIL",
+    "desc": "Du plan de projet brut au rapport COPIL validé : indicateurs calculés par Python, analyse par CSAgent, décision humaine.",
+    "types": [
+      "file_write",
+      "file_write",
+      "file_write",
+      "python",
+      "python",
+      "agent",
+      "agent",
+      "agent",
+      "python",
+      "python",
+      "agent",
+      "human_approval",
+      "python",
+      "log",
+      "end",
+      "end"
+    ]
+  },
+  {
+    "path": "cv-analyse.yaml",
+    "name": "candidatures-agents",
+    "desc": "Exemple FICTIF : examine des candidatures à un poste d'agent. Les CV sont anonymisés, CSAgent relève pour chaque critère d'une grille publique une citation exacte du CV, Python vérifie les citations et calcule le score, puis un agent humain valide la liste à examiner. Aucune candidature n'est écartée automatiquement.",
+    "types": [
+      "file_write",
+      "python",
+      "python",
+      "agent",
+      "python",
+      "python",
+      "python",
+      "human_approval",
+      "python",
+      "log",
+      "end",
+      "log"
+    ]
+  },
+  {
+    "path": "fetch_albert_models.yaml",
+    "name": "Fetch Models (GET)",
+    "desc": "Récupère la liste des modèles disponibles via l'API Albert en utilisant une requête HTTP GET, écrit le résultat dans un fichier JSON, puis affiche les données dans Excel.",
+    "types": [
+      "http_get",
+      "log",
+      "file_write",
+      "agent",
+      "end"
+    ]
+  },
+  {
+    "path": "outlook-recette.yaml",
+    "name": "open-outlook",
+    "desc": "Ouvre Microsoft Outlook et envoie la recette du couscous en HTML avec image.",
+    "types": [
+      "shell",
+      "file_write",
+      "shell",
+      "log"
+    ]
+  },
+  {
+    "path": "outlook-triage",
+    "name": "outlook-desktop-triage",
+    "desc": "Lit les derniers mails d'Outlook bureau (COM, sans Azure), les classe et les résume avec CSAgent, puis affiche expéditeur, objet, catégorie et résumé dans une page HTML. Lecture seule : aucun brouillon, aucun envoi. Windows + Outlook classique.",
+    "types": [
+      "file_write",
+      "shell",
+      "python",
+      "python",
+      "python",
+      "agent",
+      "agent",
+      "agent",
+      "agent",
+      "python",
+      "end"
+    ]
+  },
+  {
+    "path": "signalements.yaml",
+    "name": "signalements-priorisation",
+    "desc": "Exemple FICTIF : trie des signalements de consommateurs par entreprise, calcule un score de priorité exact en Python, fait rédiger par CSAgent une justification sourcée, puis attend la validation d'un humain ; une fois validée, la décision est enregistrée en Markdown et en rapport HTML, ouvert dans Microsoft Edge.",
+    "types": [
+      "file_write",
+      "python",
+      "agent",
+      "file_read",
+      "human_approval",
+      "python",
+      "python",
+      "python",
+      "log",
+      "end",
+      "log"
+    ]
+  },
+  {
+    "path": "users.yaml",
+    "name": "users",
+    "desc": "Récupère les utilisateurs de dummyjson, écrit un fichier XLSX puis ouvre Excel pour afficher le résultat (Windows).",
+    "types": [
+      "http_get",
+      "file_write",
+      "file_write",
+      "python",
+      "shell",
+      "log"
+    ]
+  },
+  {
+    "path": "weather.yaml",
+    "name": "weather",
+    "desc": "Récupère la météo de Paris, Cuvergnon, Bordeaux, Lyon, Lille et Marseille, génère une page HTML combinée au thème bleu \"award‑winning\" et l'ouvre dans Edge via le protocole file:// (Windows).",
+    "types": [
+      "http_get",
+      "file_write",
+      "http_get",
+      "file_write",
+      "http_get",
+      "file_write",
+      "http_get",
+      "file_write",
+      "http_get",
+      "file_write",
+      "http_get",
+      "file_write",
+      "file_write",
+      "python",
+      "shell",
+      "log"
+    ]
+  }
+]
