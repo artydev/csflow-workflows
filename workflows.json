@@ -91,7 +91,7 @@
     ]
   },
   {
-    "path": "outlook-triage",
+    "path": "outlook-triage.yaml",
     "name": "outlook-desktop-triage",
     "desc": "Lit les derniers mails d'Outlook bureau (COM, sans Azure), les classe et les résume avec CSAgent, puis affiche expéditeur, objet, catégorie et résumé dans une page HTML. Lecture seule : aucun brouillon, aucun envoi. Windows + Outlook classique.",
     "types": [
